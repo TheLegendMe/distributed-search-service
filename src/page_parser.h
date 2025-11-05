@@ -1,0 +1,26 @@
+#pragma once
+#include <string>
+#include <vector>
+
+// 单个网页的结构
+struct Page {
+    int id;
+    std::string url;
+    std::string title;
+    std::string content; // 正文纯文本
+};
+
+// 使用 tinyxml2 解析 XML/HTML（示例按如下结构获取字段）：
+// <doc>
+//   <docid>1</docid>
+//   <url>https://example.com</url>
+//   <title>标题</title>
+//   <content>正文...</content>
+// </doc>
+// 若你的真实数据结构不同，请在实现中调整标签名。
+namespace PageParser {
+    // 从单个 XML 文件解析出所有 Page
+    bool parseFromXmlFile(const std::string &xml_file, std::vector<Page> &out_pages);
+}
+
+
