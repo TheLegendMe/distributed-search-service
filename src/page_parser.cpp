@@ -1,5 +1,5 @@
 #include "page_parser.h"
-#include <tinyxml2.h>
+#include "/home/oym/tinyxml2-master/tinyxml2.h"
 #include <cstdlib>
 
 using namespace tinyxml2;

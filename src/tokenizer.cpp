@@ -4,7 +4,7 @@
 #include <cstdlib>
 
 // 尽量将第三方库包含限制在 .cpp 中
-#include <cppjieba/Jieba.hpp>
+#include </home/oym/cppjieba/cppjieba-5.0.3/include/cppjieba/Jieba.hpp>
 
 struct JiebaTokenizer::Impl {
     cppjieba::Jieba *jieba;

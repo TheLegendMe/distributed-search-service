@@ -10,7 +10,8 @@ TINYXML2_LIB ?=
 
 INC_FLAGS := $(if $(CPPJIEBA_INC),-I$(CPPJIEBA_INC),) $(if $(TINYXML2_INC),-I$(TINYXML2_INC),)
 LDFLAGS ?=
-LDLIBS ?= $(if $(TINYXML2_LIB),-L$(TINYXML2_LIB),) -ltinyxml2
+LDLIBS ?= $(if $(TINYXML2_LIB),-L$(TINYXML2_LIB),) 
+#-ltinyxml2
 
 SRC_DIR := src
 BUILD_DIR := build
@@ -25,7 +26,8 @@ SRCS := \
 	$(SRC_DIR)/page_parser.cpp \
 	$(SRC_DIR)/simhash.cpp \
 	$(SRC_DIR)/weighted_inverted_index.cpp \
-	$(SRC_DIR)/offline_pipeline.cpp
+	$(SRC_DIR)/offline_pipeline.cpp \
+	$(SRC_DIR)/tinyxml2.cpp
 
 OBJS := $(patsubst $(SRC_DIR)/%.cpp,$(BUILD_DIR)/%.o,$(SRCS))
 
