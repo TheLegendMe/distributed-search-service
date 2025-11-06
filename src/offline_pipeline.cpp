@@ -8,6 +8,8 @@
 #include <algorithm>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <iostream>
+#include <cctype>
 
 static bool ensureDir(const std::string &dir) {
     struct stat st{};
@@ -17,16 +19,20 @@ static bool ensureDir(const std::string &dir) {
 
 bool OfflinePipeline::run(const std::vector<std::string> &xml_files, const std::string &output_dir,
                           int simhash_threshold) {
+    std::cout << "Running OfflinePipeline with " << xml_files.size() << " XML files" << std::endl;
     if (xml_files.empty()) return false;
     if (!ensureDir(output_dir)) return false;
 
     // 1) 解析所有 XML，构建网页库
     std::vector<Page> pages;
     for (const auto &f : xml_files) {
+        std::cout << "Parsing XML file: " << f << std::endl;
         std::vector<Page> one;
-        if (PageParser::parseFromXmlFile(f, one)) {
-            pages.insert(pages.end(), one.begin(), one.end());
+        if (!PageParser::parseFromXmlFile(f, one)) {
+            std::cout << "Failed to parse XML file: " << f << std::endl;
+            continue;
         }
+        pages.insert(pages.end(), one.begin(), one.end());
     }
     if (pages.empty()) return false;
 
@@ -36,7 +42,7 @@ bool OfflinePipeline::run(const std::vector<std::string> &xml_files, const std::
     std::vector<uint64_t> signatures; // 已保留的 simhash
     for (const auto &p : pages) {
         std::vector<std::string> toks;
-        JiebaTokenizer::instance().tokenize(p.title + "\n" + p.content, toks);
+        JiebaTokenizer::instance().tokenize(p.title + "\n" + p.description, toks);
         uint64_t sig = SimHasher::simhash64(toks);
         bool dup = false;
         for (uint64_t ex : signatures) {
@@ -54,7 +60,7 @@ bool OfflinePipeline::run(const std::vector<std::string> &xml_files, const std::
     docs.reserve(dedup_pages.size());
     for (const auto &p : dedup_pages) {
         // 将标题和正文合并作为索引文本
-        docs.emplace_back(p.id, p.title + "\n" + p.content);
+        docs.emplace_back(p.docid, p.title + "\n" + p.description);
     }
     WeightedInvertedIndex index;
     index.build(docs);
@@ -68,11 +74,60 @@ bool OfflinePipeline::run(const std::vector<std::string> &xml_files, const std::
     std::ofstream offsets_out(offsets_path, std::ios::out | std::ios::binary);
     if (!pages_out || !offsets_out) return false;
 
+    auto sanitize = [](const std::string &in) -> std::string {
+        std::string out;
+        out.reserve(in.size());
+        for (unsigned char c : in) {
+            if (c == '\\t' || c == '\\n' || c == '\\r') {
+                out.push_back(' ');
+            } else {
+                out.push_back(static_cast<char>(c));
+            }
+        }
+        // 可选：压缩多余空格
+        std::string compact;
+        compact.reserve(out.size());
+        bool prev_space = false;
+        for (char ch : out) {
+            bool is_space = (ch == ' ');
+            if (is_space && prev_space) continue;
+            compact.push_back(ch);
+            prev_space = is_space;
+        }
+        return compact;
+    };
+
+    auto xmlEscape = [](const std::string &in) -> std::string {
+        std::string out;
+        out.reserve(in.size());
+        for (char ch : in) {
+            switch (ch) {
+                case '&': out += "&amp;"; break;
+                case '<': out += "&lt;"; break;
+                case '>': out += "&gt;"; break;
+                case '"': out += "&quot;"; break;
+                case '\'': out += "&apos;"; break;
+                default: out.push_back(ch); break;
+            }
+        }
+        return out;
+    };
+
     std::streampos offset = 0;
     for (const auto &p : dedup_pages) {
-        offsets_out << p.id << '\t' << offset << '\n';
+        offsets_out << p.docid << '\t' << offset << '\n';
         std::ostringstream line;
-        line << p.id << '\t' << p.url << '\t' << p.title << '\t' << p.content << '\n';
+        const std::string link = xmlEscape(sanitize(p.link));
+        const std::string title = xmlEscape(sanitize(p.title));
+        const std::string desc = xmlEscape(sanitize(p.description));
+
+        // 以易行式（doc/docid/title/link/description）保存
+        line << "<doc>\n";
+        line << "<docid>" << p.docid << "</docid>\n";
+        line << "<title>" << title << "</title>\n";
+        line << "<link>" << link << "</link>\n";
+        line << "<description>" << desc << "</description>\n";
+        line << "</doc>\n";
         const std::string s = line.str();
         pages_out.write(s.data(), static_cast<std::streamsize>(s.size()));
         offset += static_cast<std::streamoff>(s.size());

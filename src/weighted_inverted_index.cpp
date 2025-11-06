@@ -3,10 +3,13 @@
 #include <unordered_map>
 #include <algorithm>
 #include <cmath>
+#include <fstream>
+#include <sstream>
 
 void WeightedInvertedIndex::build(const std::vector<std::pair<int, std::string>> &documents) {
     postings.clear();
     if (documents.empty()) return;
+    total_docs = documents.size();
 
     // 1) 统计 DF
     std::unordered_map<std::string, int> df;
@@ -77,6 +80,125 @@ std::vector<int> WeightedInvertedIndex::searchAND(const std::vector<std::string>
         if (res.empty()) break;
     }
     return res;
+}
+
+std::vector<std::pair<int, double>> WeightedInvertedIndex::searchANDCosineRanked(const std::vector<std::string> &terms) const {
+    std::vector<std::pair<int, double>> empty;
+    if (terms.empty()) return empty;
+
+    // Step 1: 构建查询向量 X 的 TF-IDF
+    std::unordered_map<std::string, int> qtf_raw;
+    for (const auto &raw : terms) {
+        std::string t = raw;
+        qtf_raw[t] += 1;
+    }
+    int q_max_tf = 0;
+    for (const auto &kv : qtf_raw) if (kv.second > q_max_tf) q_max_tf = kv.second;
+    if (q_max_tf == 0) return empty;
+
+    const double N = static_cast<double>(total_docs == 0 ? 1 : total_docs);
+    std::unordered_map<std::string, double> qvec; // X
+    qvec.reserve(qtf_raw.size());
+    for (const auto &kv : qtf_raw) {
+        const std::string &term = kv.first;
+        auto pit = postings.find(term);
+        if (pit == postings.end()) return empty; // 有词不在索引中，直接无结果（AND 语义）
+        int df_t = static_cast<int>(pit->second.size());
+        double tf_norm = 0.5 + 0.5 * (static_cast<double>(kv.second) / static_cast<double>(q_max_tf));
+        double idf = std::log((N + 1.0) / (static_cast<double>(df_t) + 1.0)) + 1.0;
+        qvec[term] = tf_norm * idf;
+    }
+    // |X|
+    double qnorm2 = 0.0;
+    for (const auto &kv : qvec) qnorm2 += kv.second * kv.second;
+    double qnorm = qnorm2 > 0.0 ? std::sqrt(qnorm2) : 0.0;
+    if (qnorm == 0.0) return empty;
+
+    // Step 2: 求 AND 候选文档集合（docId 交集）
+    std::vector<std::vector<int>> lists;
+    lists.reserve(terms.size());
+    for (const auto &raw : terms) {
+        const auto &setref = postings.at(raw);
+        std::vector<int> ids;
+        ids.reserve(setref.size());
+        for (const auto &p : setref) ids.push_back(p.first);
+        lists.emplace_back(std::move(ids));
+    }
+    std::sort(lists.begin(), lists.end(), [](const auto &a, const auto &b){ return a.size() < b.size(); });
+    std::vector<int> candidates = lists.front();
+    std::vector<int> tmp;
+    for (size_t i = 1; i < lists.size(); ++i) {
+        tmp.clear();
+        const auto &cur = lists[i];
+        size_t p = 0, q = 0;
+        while (p < candidates.size() && q < cur.size()) {
+            if (candidates[p] == cur[q]) { tmp.push_back(candidates[p]); ++p; ++q; }
+            else if (candidates[p] < cur[q]) { ++p; }
+            else { ++q; }
+        }
+        candidates.swap(tmp);
+        if (candidates.empty()) return empty;
+    }
+
+    // Step 3: 对每个候选计算余弦得分
+    std::vector<std::pair<int, double>> scored;
+    scored.reserve(candidates.size());
+    for (int docId : candidates) {
+        // 构建 Y 在查询子空间的权重（仅对查询词）
+        double dot = 0.0;
+        double ynorm2 = 0.0;
+        for (const auto &qkv : qvec) {
+            const std::string &term = qkv.first;
+            // 在线性扫描 set<pair<int,double>> 中查找 docId
+            const auto &pset = postings.at(term);
+            double weightY = 0.0;
+            // 下述线性搜索在 posting 稀疏较小时可接受，必要时可优化为附加映射
+            for (const auto &pd : pset) {
+                if (pd.first == docId) { weightY = pd.second; break; }
+                if (pd.first > docId) break; // 由于按 docId 排序
+            }
+            if (weightY != 0.0) {
+                dot += qkv.second * weightY;
+                ynorm2 += weightY * weightY;
+            }
+        }
+        double ynorm = ynorm2 > 0.0 ? std::sqrt(ynorm2) : 0.0;
+        double cos = (qnorm > 0.0 && ynorm > 0.0) ? (dot / (qnorm * ynorm)) : 0.0;
+        scored.emplace_back(docId, cos);
+    }
+    std::sort(scored.begin(), scored.end(), [](const auto &a, const auto &b){
+        if (a.second != b.second) return a.second > b.second;
+        return a.first < b.first;
+    });
+    return scored;
+}
+
+bool WeightedInvertedIndex::loadFromFile(const std::string &index_path, size_t total_docs_count) {
+    postings.clear();
+    total_docs = total_docs_count;
+    std::ifstream fin(index_path);
+    if (!fin) return false;
+    std::string line;
+    while (std::getline(fin, line)) {
+        if (line.empty()) continue;
+        auto tab = line.find('\t');
+        if (tab == std::string::npos) continue;
+        std::string term = line.substr(0, tab);
+        std::string rest = line.substr(tab + 1);
+        std::set<std::pair<int, double>> setv;
+        std::stringstream ss(rest);
+        std::string token;
+        while (std::getline(ss, token, ',')) {
+            if (token.empty()) continue;
+            auto colon = token.find(':');
+            if (colon == std::string::npos) continue;
+            int docid = std::atoi(token.substr(0, colon).c_str());
+            double w = std::atof(token.substr(colon + 1).c_str());
+            setv.insert({docid, w});
+        }
+        if (!setv.empty()) postings[term] = std::move(setv);
+    }
+    return !postings.empty();
 }
 
 std::vector<int> WeightedInvertedIndex::searchANDWeighted(const std::vector<std::string> &terms) const {

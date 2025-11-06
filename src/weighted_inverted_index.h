@@ -25,11 +25,23 @@ public:
     std::vector<int> searchANDWeighted(const std::vector<std::string> &terms) const;
     std::vector<int> searchORWeighted(const std::vector<std::string> &terms) const;
 
+    // 余弦相似度排序（AND 语义）：
+    // 1) 将查询词当作文档，计算其 TF-IDF 权重向量 X
+    // 2) 仅保留包含全部查询词的文档，取每个文档中各查询词对应的权重向量 Y
+    // 3) 计算 cos = (X·Y)/(|X||Y|)，按 cos 降序排序
+    std::vector<std::pair<int, double>> searchANDCosineRanked(const std::vector<std::string> &terms) const;
+
+    // 文档总数（用于计算 IDF）
+    size_t docCount() const { return total_docs; }
+
     // 只读访问，供持久化输出使用
     const InvertIndexTable &data() const { return postings; }
+    // 从文本索引加载（格式同 output/index.txt），并设置 total_docs
+    bool loadFromFile(const std::string &index_path, size_t total_docs_count);
 
 private:
     InvertIndexTable postings;
+    size_t total_docs = 0;
 };
 
 
