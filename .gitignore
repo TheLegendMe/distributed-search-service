@@ -1,0 +1,75 @@
+# 编译产物
+*.o
+build/
+bin/
+search_service
+recommend_service
+file_service
+web_server
+gateway_service
+
+# 日志文件
+logs/*.log
+*.log
+*.pid
+
+# 上传文件和用户数据
+uploads/
+temp/
+
+# 向量库存储
+qdrant_storage/
+multimodal_storage/
+
+# 输出文件（索引和网页库）
+output/*.bin
+output/*.txt
+!output/.gitkeep
+
+# Python缓存
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+*.egg-info/
+
+# Redis数据
+*.rdb
+dump.rdb
+
+# SSL证书（敏感）
+ssl/*.key
+ssl/*.crt
+!ssl/.gitkeep
+
+# 备份文件
+*.bak
+*~
+*.swp
+*.swo
+
+# IDE和编辑器
+.vscode/
+.idea/
+*.sublime-*
+
+# 系统文件
+.DS_Store
+Thumbs.db
+
+# Nginx临时文件
+/tmp/
+client_body_temp/
+proxy_temp/
+fastcgi_temp/
+uwsgi_temp/
+scgi_temp/
+
+# 测试和临时文件
+test_upload.html
+test_*.log
+nohup.out
+

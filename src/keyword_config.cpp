@@ -23,6 +23,7 @@ bool loadKeywordConfig(const std::string &path, KeywordConfig &cfg) {
         trim(key); trim(val);
         if (key == "CANDIDATES_FILE") cfg.candidates_file = val;
         else if (key == "OUTPUT_DIR") cfg.output_dir = val;
+        else if (key == "JIEBA_DICT_DIR") cfg.jieba_dict_dir = val;
     }
     return !cfg.candidates_file.empty() && !cfg.output_dir.empty();
 }

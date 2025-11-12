@@ -7,6 +7,7 @@
 struct KeywordConfig {
     std::string candidates_file;
     std::string output_dir;
+    std::string jieba_dict_dir;
 };
 
 bool loadKeywordConfig(const std::string &path, KeywordConfig &cfg);

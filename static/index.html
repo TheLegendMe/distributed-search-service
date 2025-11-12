@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>分布式搜索引擎</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <link rel="stylesheet" href="/static/upload.css">
+    <link rel="stylesheet" href="/static/multimodal.css">
+</head>
+<body>
+    <div class="container">
+        <!-- 头部 Logo -->
+        <header class="header">
+            <div class="logo">
+                <svg width="40" height="40" viewBox="0 0 40 40">
+                    <circle cx="20" cy="20" r="18" fill="none" stroke="#4285f4" stroke-width="3"/>
+                    <circle cx="20" cy="20" r="10" fill="#4285f4"/>
+                    <line x1="30" y1="30" x2="38" y2="38" stroke="#4285f4" stroke-width="3" stroke-linecap="round"/>
+                </svg>
+                <h1>SearchHub</h1>
+            </div>
+        <nav class="nav">
+            <a href="#search" class="active">搜索</a>
+            <a href="#recommend">关键词推荐</a>
+            <a href="#multimodal">🎨 智能搜索</a>
+            <a href="#upload">文件上传</a>
+        </nav>
+        </header>
+
+        <!-- 搜索模块 -->
+        <section id="search-section" class="section active">
+            <div class="search-box">
+                <div class="search-input-wrapper">
+                    <svg class="search-icon" width="20" height="20" viewBox="0 0 20 20">
+                        <circle cx="8" cy="8" r="6" fill="none" stroke="#5f6368" stroke-width="2"/>
+                        <line x1="13" y1="13" x2="18" y2="18" stroke="#5f6368" stroke-width="2" stroke-linecap="round"/>
+                    </svg>
+                    <input 
+                        type="text" 
+                        id="search-input" 
+                        class="search-input" 
+                        placeholder="输入关键词搜索文档..."
+                        autocomplete="off"
+                    >
+                    <button id="search-btn" class="search-btn">搜索</button>
+                </div>
+                <div id="search-suggestions" class="suggestions"></div>
+            </div>
+
+            <div class="quick-links">
+                <span class="quick-label">热门搜索：</span>
+                <button class="quick-btn" data-query="人工智能">人工智能</button>
+                <button class="quick-btn" data-query="机器学习">机器学习</button>
+                <button class="quick-btn" data-query="深度学习">深度学习</button>
+                <button class="quick-btn" data-query="自然语言处理">自然语言处理</button>
+            </div>
+
+            <div id="search-results" class="results"></div>
+            <div id="search-loading" class="loading hidden">
+                <div class="spinner"></div>
+                <p>正在搜索...</p>
+            </div>
+        </section>
+
+        <!-- 关键词推荐模块 -->
+        <section id="recommend-section" class="section">
+            <div class="recommend-box">
+                <h2 class="section-title">智能关键词推荐</h2>
+                <p class="section-desc">输入部分关键词，系统将基于编辑距离算法为您推荐相关词汇</p>
+                
+                <div class="recommend-input-wrapper">
+                    <input 
+                        type="text" 
+                        id="recommend-input" 
+                        class="recommend-input" 
+                        placeholder="输入关键词获取推荐..."
+                        autocomplete="off"
+                    >
+                    <button id="recommend-btn" class="recommend-btn">获取推荐</button>
+                </div>
+
+                <div class="recommend-examples">
+                    <span class="example-label">示例：</span>
+                    <button class="example-btn" data-word="艺术">艺术</button>
+                    <button class="example-btn" data-word="文化">文化</button>
+                    <button class="example-btn" data-word="历史">历史</button>
+                    <button class="example-btn" data-word="科学">科学</button>
+                </div>
+
+                <div id="recommend-results" class="recommend-results"></div>
+                <div id="recommend-loading" class="loading hidden">
+                    <div class="spinner"></div>
+                    <p>正在生成推荐...</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- 多模态智能搜索模块 -->
+        <section id="multimodal-section" class="section">
+            <div class="search-box" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 40px; border-radius: 20px; margin-bottom: 30px; color: white; box-shadow: 0 10px 40px rgba(102, 126, 234, 0.3);">
+                <h2 class="section-title" style="color: white; margin-bottom: 10px; font-size: 32px; text-shadow: 0 2px 10px rgba(0,0,0,0.2);">🎨 多模态智能搜索</h2>
+                <p class="section-desc" style="color: rgba(255,255,255,0.9); font-size: 16px;">支持文本语义搜索、以图搜图、跨模态检索 - 让AI理解你的搜索意图</p>
+            </div>
+
+            <div class="multimodal-container">
+                <!-- 搜索模式选择 -->
+                <div class="search-mode-selector">
+                    <button class="mode-btn active" data-mode="text">📝 文本搜索</button>
+                    <button class="mode-btn" data-mode="image">🖼️ 图片搜索</button>
+                </div>
+
+                <!-- 文本搜索 -->
+                <div id="text-search-panel" class="search-panel active">
+                    <div class="search-input-wrapper">
+                        <input type="text" id="multimodal-text-input" 
+                               placeholder="输入语义描述，如'可爱的小动物'、'蓝天白云'..."
+                               class="search-input">
+                        <button id="multimodal-text-btn" class="search-btn">语义搜索</button>
+                    </div>
+                    <div class="search-hint">💡 智能理解语义，即使关键词不完全匹配也能找到相关内容</div>
+                </div>
+
+                <!-- 图片搜索 -->
+                <div id="image-search-panel" class="search-panel">
+                    <div class="image-upload-area" id="multimodal-image-area">
+                        <svg width="60" height="60" viewBox="0 0 60 60">
+                            <rect x="5" y="15" width="50" height="35" rx="3" stroke="#4285f4" stroke-width="2" fill="none"/>
+                            <circle cx="20" cy="28" r="5" fill="#4285f4"/>
+                            <path d="M10 40 L25 25 L35 35 L45 25 L55 35 L55 45 L10 45 Z" fill="#4285f4" opacity="0.3"/>
+                        </svg>
+                        <p>上传图片搜索相似内容</p>
+                        <p class="upload-hint">支持JPG、PNG等格式</p>
+                        <input type="file" id="multimodal-image-input" accept="image/*" style="display:none">
+                    </div>
+                    <div id="multimodal-image-preview" class="image-preview hidden"></div>
+                    <button id="multimodal-image-btn" class="search-btn hidden">搜索相似图片</button>
+                    <div class="search-hint">💡 上传一张图片，找到视觉上相似的其他图片</div>
+                </div>
+
+                <!-- 搜索结果 -->
+                <div id="multimodal-results" class="multimodal-results"></div>
+                <div id="multimodal-loading" class="loading hidden">
+                    <div class="spinner"></div>
+                    <p>AI搜索中...</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- 文件管理模块 -->
+        <section id="upload-section" class="section">
+            <h2 class="section-title">📁 文件管理器</h2>
+            <p class="section-desc">上传、预览、下载、删除文件，支持图片直接显示</p>
+
+            <!-- 上传区域 -->
+            <div class="upload-container">
+                <div class="upload-controls">
+                    <label for="upload-folder-select">上传到文件夹：</label>
+                    <select id="upload-folder-select">
+                        <option value="">根目录</option>
+                    </select>
+                    
+                    <label style="margin-left: 20px;">
+                        <input type="checkbox" id="add-to-index-checkbox" checked>
+                        自动添加到搜索索引
+                    </label>
+                    <span class="index-hint" style="font-size: 12px; color: #666; margin-left: 8px;">
+                        💡 文本文件(.txt, .md, .json, .xml)会索引内容，其他文件只索引文件名
+                    </span>
+                </div>
+                
+                <div class="upload-area" id="upload-area">
+                    <svg width="60" height="60" viewBox="0 0 60 60">
+                        <path d="M30 5 L30 35 M20 25 L30 15 L40 25" stroke="#4285f4" stroke-width="3" fill="none" stroke-linecap="round"/>
+                        <path d="M10 40 L10 50 L50 50 L50 40" stroke="#4285f4" stroke-width="3" fill="none" stroke-linecap="round"/>
+                    </svg>
+                    <p>点击或拖拽文件到此处上传</p>
+                    <p class="upload-hint">支持图片、文档、视频等各类文件，单个文件最大1GB</p>
+                    <input type="file" id="file-input" style="display:none" multiple>
+                </div>
+
+                <div id="upload-list" class="upload-list"></div>
+            </div>
+
+            <!-- 文件浏览器 -->
+            <div class="file-browser">
+                <div class="browser-header">
+                    <h3>📂 我的文件 <span id="current-path" style="font-size: 14px; color: #666;"></span></h3>
+                    <div class="browser-actions">
+                        <button class="btn-refresh" onclick="refreshFileList(currentFolder)">🔄 刷新</button>
+                        <button class="btn-new-folder" onclick="createNewFolder()">📁 新建文件夹</button>
+                        <select id="view-mode" onchange="changeViewMode(this.value)">
+                            <option value="grid">网格视图</option>
+                            <option value="list">列表视图</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div id="file-grid" class="file-grid"></div>
+                
+                <div class="upload-stats">
+                    <p>总文件数: <span id="total-files">-</span> | 总大小: <span id="total-size">-</span> MB</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- 页脚 -->
+        <footer class="footer">
+            <p>&copy; 2025 SearchHub - 分布式搜索引擎 | 基于 C++ & Workflow & WFRest</p>
+        </footer>
+    </div>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>
+
